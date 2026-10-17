@@ -124,14 +124,30 @@ test("legacy synthetic blocks bind only to a unique resent carrier before orphan
     } finally { await h.close(); }
 });
 
-test("ambiguous historical calls must not be guessed as a legacy block's owner", async () => {
+test("failed retries of the same range do not obscure the legacy carrier's exact successful receipt", async () => {
+    const h = await harness();
+    try {
+        await h.post();
+        const out = await h.tool({ args });
+        appendPair(h.history, "call_failed_before", args, "[Compression FAILED: retry.]");
+        appendPair(h.history, "call_legacy_success", args, out.data.result!);
+        const before = await h.post();
+        assert.equal(h.session().state.blocks.at(-1)?.compressCallId, "call_legacy_success");
+        appendPair(h.history, "call_foreign_success", args, "[Compressed m00002..m00007]\n · b999 full summary 100ch");
+        appendPair(h.history, "call_failed_after", args, "[Compression FAILED: retry.]");
+        const afterInput = await h.post();
+        assert.deepEqual(afterInput.slice(0, before.length), before, "failed retries must not delete the uniquely evidenced successful carrier");
+    } finally { await h.close(); }
+});
+
+test("ambiguous successful receipts must not be guessed as a legacy block's owner", async () => {
     const h = await harness();
     try {
         await h.post();
         const out = await h.tool({ args });
         const oldId = h.session().state.blocks.at(-1)!.compressCallId;
         appendPair(h.history, "call_candidate_1", args, out.data.result!);
-        appendPair(h.history, "call_candidate_2", args, "[Compression FAILED: retry.]");
+        appendPair(h.history, "call_candidate_2", args, out.data.result!);
         await h.post();
         assert.equal(h.session().state.blocks.at(-1)?.compressCallId, oldId);
     } finally { await h.close(); }

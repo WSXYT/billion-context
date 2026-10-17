@@ -162,12 +162,13 @@ export function reconcilePluginFoldCallIds(session: Session, messages: CoreMessa
     let changed = 0;
     for (const [key, sameRange] of blocks) {
         const block = sameRange[0]!;
-        const ids = calls.get(key);
-        if (sameRange.length !== 1 || !isPluginFoldCallId(block.compressCallId) || ids?.size !== 1) continue;
-        const id = ids.values().next().value!;
-        const receipt = results.get(id);
-        if (!receipt?.startsWith("[Compressed ") || !receipt.split("\n").some((line) => line.startsWith(` · ${block.blockId} full summary `))) continue;
-        block.compressCallId = id;
+        if (sameRange.length !== 1 || !isPluginFoldCallId(block.compressCallId)) continue;
+        const ids = [...calls.get(key) ?? []].filter((id) => {
+            const receipt = results.get(id);
+            return receipt?.startsWith("[Compressed ") && receipt.split("\n").some((line) => line.startsWith(` · ${block.blockId} full summary `));
+        });
+        if (ids.length !== 1) continue;
+        block.compressCallId = ids[0]!;
         changed++;
     }
     if (changed > 0) markDirty(session);
