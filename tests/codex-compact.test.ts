@@ -8,6 +8,7 @@ import type { Session } from "../src/session.ts";
 import {
     codexCompactMode,
     isCodexClient,
+    usesCodexWireProfile,
     hasCompactionTrigger,
     isBiliCompactionItem,
     stripBiliCompactionItems,
@@ -60,6 +61,15 @@ test("isCodexClient: explicit native Pi identity outranks a relay-compatible Cod
     assert.equal(isCodexClient({ "user-agent": ua, "x-bili-plugin": "codex" }), true);
     assert.equal(isCodexClient({ "user-agent": ua }), true, "ordinary Codex detection is unchanged");
     assert.equal(isCodexClient({ "user-agent": "codex_future/1.0", "x-bili-plugin": "pi" }), false);
+});
+
+test("native Pi keeps an intentional Codex relay wire profile without Codex compaction policy", () => {
+    const headers = { "x-bili-plugin": "pi", "user-agent": "codex_cli_rs/0.21.0" };
+    assert.equal(isCodexClient(headers), false);
+    assert.equal(usesCodexWireProfile(headers), true, "preserve Codex-relay summary request shape");
+    assert.equal(usesCodexWireProfile({ "user-agent": "openai-node/3.0", "x-bili-plugin": "pi" }), false);
+    assert.equal(usesCodexWireProfile({}), false);
+    assert.equal(usesCodexWireProfile({ "user-agent": "codex_exec/1.0" }), true);
 });
 
 test("isCodexClient: lenient token-level 'codex' fallback for unknown client variants (#645, narrowed to token prefix #1641)", () => {

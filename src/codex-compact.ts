@@ -33,17 +33,20 @@ export function codexCompactMode(): CodexCompactMode {
 // client variant must not silently fall out of detection (#645) — token-level
 // keeps any future "codex_*/…" variant covered; register an exact prefix
 // above only when the variant sends an initial capital.
-export function isCodexClient(headers: Record<string, string | string[] | undefined>): boolean {
-    // Native Pi may use a Codex-shaped UA for relay compatibility. Its explicit
-    // host identity must not activate Codex compaction/summary handling.
-    const plugin = headers["x-bili-plugin"];
-    if ((Array.isArray(plugin) ? plugin[0] : plugin) === "pi") return false;
+export function usesCodexWireProfile(headers: Record<string, string | string[] | undefined>): boolean {
     const ua = headers["user-agent"];
     if (!ua) return false;
     const s = Array.isArray(ua) ? ua[0] : ua;
     if (typeof s !== "string") return false;
     if (CODEX_UA_PREFIXES.some((p) => s.toLowerCase().startsWith(p))) return true;
     return s.split(/\s+/).some((t) => t.startsWith("codex"));
+}
+
+export function isCodexClient(headers: Record<string, string | string[] | undefined>): boolean {
+    // Native Pi may use a Codex-shaped UA for relay compatibility. Keep that
+    // wire profile, but do not enable Codex-only compaction policy for Pi.
+    const plugin = headers["x-bili-plugin"];
+    return (Array.isArray(plugin) ? plugin[0] : plugin) !== "pi" && usesCodexWireProfile(headers);
 }
 
 export function hasCompactionTrigger(input: unknown): boolean {

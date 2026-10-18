@@ -22,7 +22,7 @@ import { peekRegistryOutputLimit } from "./registry.js";
 import { safePrefix } from "./text-safe.js";
 import { applyEstimateCalibration, currentCalibrationFactor } from "./util.js";
 import { configuredSummaryPlan, type ConfiguredSummaryPlan } from "./external-summary-runtime.js";
-import { isCodexClient } from "./codex-compact.js";
+import { usesCodexWireProfile } from "./codex-compact.js";
 import type { ExternalSummaryBatchResult } from "./external-summary.js";
 import type { ResolvedKernelConfig } from "./compress-settings.js";
 import { newExternalCallId } from "./external-summary-marker.js";
@@ -1320,7 +1320,7 @@ async function requestSummaryBody(deps: PreflightDeps, body: string, stream: boo
 const SSE_DATA_LINE_RE = /(?:^|\n)data:/;
 
 async function requestSummary(deps: PreflightDeps, system: string, content: string, stream: boolean, includeMaxOutputTokens: boolean): Promise<SummaryOutcome> {
-    const text = await requestSummaryBody(deps, JSON.stringify(summaryPayload(deps.protocol, deps.model, system, content, stream, includeMaxOutputTokens, safeHost(deps.url), deps.config.modelContextLimit, deps.billingBlock, isCodexClient(deps.headers))), stream);
+    const text = await requestSummaryBody(deps, JSON.stringify(summaryPayload(deps.protocol, deps.model, system, content, stream, includeMaxOutputTokens, safeHost(deps.url), deps.config.modelContextLimit, deps.billingBlock, usesCodexWireProfile(deps.headers))), stream);
     let json: unknown;
     try {
         json = JSON.parse(text);
