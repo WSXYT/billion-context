@@ -122,7 +122,8 @@ async function startProxy(upstreamPort: number): Promise<http.Server> {
     return proxy;
 }
 
-test("#2733: codex client → summary payload carries the real CLI wire shape; strict relay accepts it, fold applies", async () => {
+for (const nativePi of [false, true]) test(`#2733: ${nativePi ? "native Pi with Codex UA" : "codex client"} → strict relay accepts the summary wire shape`, async () => {
+    const label = nativePi ? "s2733-pi" : "s2733-codex";
     const summaryCalls: SummaryCall[] = [];
     const upstream = makeUpstream(summaryCalls, true);
     upstream.listen(0, "127.0.0.1");
@@ -136,8 +137,8 @@ test("#2733: codex client → summary payload carries the real CLI wire shape; s
     try {
         const r = await fetch(url, {
             method: "POST",
-            headers: { "content-type": "application/json", "user-agent": "codex_cli_rs/0.25.0" },
-            body: JSON.stringify({ model: "gpt-resp", stream: true, session_id: "s2733-codex", instructions: "You are the test coding agent.", input: longInput() }),
+            headers: { "content-type": "application/json", "user-agent": "codex_cli_rs/0.25.0", ...(nativePi ? { "x-bili-plugin": "pi" } : {}) },
+            body: JSON.stringify({ model: "gpt-resp", stream: true, session_id: label, instructions: "You are the test coding agent.", input: longInput() }),
         });
         assert.equal(r.status, 200, `preflight must fold despite the strict codex-shape validator (before the fix every summary call was 400'd), got ${r.status}`);
         const text = await r.text();
@@ -147,7 +148,7 @@ test("#2733: codex client → summary payload carries the real CLI wire shape; s
         assert.ok(summaryCalls.every((c) => c.codexShaped),
             `every summary call must carry the codex CLI signature (typed message items + include:["reasoning.encrypted_content"]), got ${JSON.stringify(summaryCalls)}`);
 
-        const sess = listSessions().find((s) => s.meta.label === "s2733-codex");
+        const sess = listSessions().find((s) => s.meta.label === label);
         assert.ok(sess, "session exists");
         assert.ok((sess!.state.blocks ?? []).some((b) => b.active), "the preflight fold landed on the session");
     } finally {
