@@ -130,13 +130,18 @@ test("failed retries of the same range do not obscure the legacy carrier's exact
         await h.post();
         const out = await h.tool({ args });
         appendPair(h.history, "call_failed_before", args, "[Compression FAILED: retry.]");
+        appendPair(h.history, "call_foreign_success", args, "[Compressed m00002..m00007]\n · b999 full summary 100ch");
         appendPair(h.history, "call_legacy_success", args, out.data.result!);
         const before = await h.post();
         assert.equal(h.session().state.blocks.at(-1)?.compressCallId, "call_legacy_success");
-        appendPair(h.history, "call_foreign_success", args, "[Compressed m00002..m00007]\n · b999 full summary 100ch");
-        appendPair(h.history, "call_failed_after", args, "[Compression FAILED: retry.]");
+        for (let i = 0; i < 2; i++) appendPair(h.history, `call_failed_after_${i}`, args, "[Compression FAILED: retry.]");
         const afterInput = await h.post();
-        assert.deepEqual(afterInput.slice(0, before.length), before, "failed retries must not delete the uniquely evidenced successful carrier");
+        const successfulPair = (input: ResponseInputItem[]) => input.filter(item => (item.type === "function_call" || item.type === "function_call_output") && item.call_id === "call_legacy_success");
+        assert.equal(successfulPair(before).length, 2);
+        assert.deepEqual(successfulPair(afterInput), successfulPair(before), "the active carrier must survive even when older failed orphan pairs legitimately expire");
+        const firstPair = before.findIndex(item => item.type === "function_call");
+        assert.deepEqual(afterInput.slice(0, firstPair), before.slice(0, firstPair), "migration must not resurrect the early summary anchor");
+        assert.equal(h.session().state.blocks.filter(block => block.active).length, 1);
     } finally { await h.close(); }
 });
 
