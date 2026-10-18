@@ -53,6 +53,15 @@ test("isCodexClient: UA prefix detection (Node lowercases header keys)", () => {
     assert.equal(isCodexClient({ "user-agent": ["other", "codex_cli_rs/0.1.0"] }), false, "array UA first is not codex");
 });
 
+test("isCodexClient: explicit native Pi identity outranks a relay-compatible Codex UA", () => {
+    const ua = "codex_cli_rs/0.21.0";
+    assert.equal(isCodexClient({ "user-agent": ua, "x-bili-plugin": "pi" }), false);
+    assert.equal(isCodexClient({ "user-agent": ua, "x-bili-plugin": ["pi", "other"] }), false);
+    assert.equal(isCodexClient({ "user-agent": ua, "x-bili-plugin": "codex" }), true);
+    assert.equal(isCodexClient({ "user-agent": ua }), true, "ordinary Codex detection is unchanged");
+    assert.equal(isCodexClient({ "user-agent": "codex_future/1.0", "x-bili-plugin": "pi" }), false);
+});
+
 test("isCodexClient: lenient token-level 'codex' fallback for unknown client variants (#645, narrowed to token prefix #1641)", () => {
     assert.equal(isCodexClient({ "user-agent": "codex_new_variant/9.9.9" }), true, "unknown variant: component starting with codex");
     assert.equal(isCodexClient({ "user-agent": "relay/1.0 codex_cli_rs/0.21.0" }), true, "known variant behind a relay component still detected via token fallback");
