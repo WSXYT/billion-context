@@ -124,4 +124,7 @@ test("wire-client registry: instructionsFingerprintKeyed by observed signals (#3
     assert.equal(instructionsFingerprintApplies({ "x-claude-code-session-id": "9ae0…" }), true);
     assert.equal(instructionsFingerprintApplies({ "x-claude-code-session-id": "   " }), false); // blank ≠ signal
     assert.equal(instructionsFingerprintApplies({ "x-acp-session": "abc" }), false);
+    // #3687: native Pi may carry a Codex-shaped relay UA; explicit pi identity
+    // outranks UA guessing, so pi keys verbatim like every non-codex client.
+    assert.equal(instructionsFingerprintApplies({ "x-bili-plugin": "pi", "user-agent": "codex_cli_rs/0.21.0" }), false);
 });
